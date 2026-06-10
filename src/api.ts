@@ -23,6 +23,19 @@ export class ApiError extends Error {
   }
 }
 
+function isListResponse(data: unknown): data is { vendor: string; files: RemoteFile[] } {
+  if (data === null || typeof data !== 'object') return false
+  const obj = data as { vendor?: unknown; files?: unknown }
+  if (typeof obj.vendor !== 'string' || !Array.isArray(obj.files)) return false
+  return obj.files.every(
+    (f: unknown) =>
+      f !== null &&
+      typeof f === 'object' &&
+      typeof (f as { path?: unknown }).path === 'string' &&
+      typeof (f as { etag?: unknown }).etag === 'string'
+  )
+}
+
 export class WeddingComputerClient {
   constructor(
     private baseUrl: string,
@@ -53,8 +66,15 @@ export class WeddingComputerClient {
 
   private static errorOf(res: { text: string }, fallback: string): string {
     try {
-      const parsed = JSON.parse(res.text)
-      if (typeof parsed?.error === 'string') return parsed.error
+      const parsed: unknown = JSON.parse(res.text)
+      if (
+        parsed !== null &&
+        typeof parsed === 'object' &&
+        'error' in parsed &&
+        typeof (parsed as { error: unknown }).error === 'string'
+      ) {
+        return (parsed as { error: string }).error
+      }
     } catch {
       /* not json */
     }
@@ -70,7 +90,11 @@ export class WeddingComputerClient {
     if (res.status !== 200) {
       throw new ApiError(res.status, WeddingComputerClient.errorOf(res, `List failed (${res.status})`))
     }
-    return res.json as { vendor: string; files: RemoteFile[] }
+    const data: unknown = res.json
+    if (!isListResponse(data)) {
+      throw new ApiError(res.status, 'Unexpected response from the server')
+    }
+    return data
   }
 
   async getFile(serverPath: string): Promise<{ content: string; etag: string }> {
@@ -104,8 +128,15 @@ export class WeddingComputerClient {
     })
 
     if (res.status === 200) {
-      const etag = (res.json as { etag?: string })?.etag ?? WeddingComputerClient.etagOf(res.headers) ?? ''
-      return { ok: true, etag }
+      const body: unknown = res.json
+      const bodyEtag =
+        body !== null &&
+        typeof body === 'object' &&
+        'etag' in body &&
+        typeof (body as { etag: unknown }).etag === 'string'
+          ? (body as { etag: string }).etag
+          : undefined
+      return { ok: true, etag: bodyEtag ?? WeddingComputerClient.etagOf(res.headers) ?? '' }
     }
 
     return {

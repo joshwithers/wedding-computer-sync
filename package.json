@@ -1,6 +1,6 @@
 {
   "name": "wedding-computer-sync",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Obsidian plugin: two-way sync with wedding.computer",
   "main": "main.js",
   "scripts": {

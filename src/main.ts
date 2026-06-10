@@ -204,7 +204,8 @@ export default class WeddingComputerSyncPlugin extends Plugin {
   // ── Persistence ──
 
   async loadPersisted(): Promise<void> {
-    const data = ((await this.loadData()) ?? {}) as Partial<PersistedData> & {
+    const raw: unknown = await this.loadData()
+    const data = (raw ?? {}) as Partial<PersistedData> & {
       settings?: Partial<WCSettings> & { token?: string }
     }
 

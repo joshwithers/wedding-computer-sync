@@ -21,12 +21,11 @@ changes from the app (or your couples) flow back into your vault.
 
 ## Install
 
-**Until the plugin is in the community directory**, install with
-[BRAT](https://obsidian.md/plugins?id=obsidian42-brat):
+The plugin is in the official
+[Obsidian community directory](https://community.obsidian.md/plugins/wedding-computer-sync):
 
-1. Install and enable **BRAT** from Obsidian's community plugins.
-2. BRAT settings → **Add beta plugin** → `joshwithers/wedding-computer-sync`.
-3. Enable **Wedding Computer Sync** in Settings → Community plugins.
+1. In Obsidian: **Settings → Community plugins → Browse**.
+2. Search for **Wedding Computer Sync**, install, and enable it.
 
 Or manually: download `main.js` and `manifest.json` from the
 [latest release](https://github.com/joshwithers/wedding-computer-sync/releases/latest)
@@ -39,6 +38,10 @@ Obsidian and enable the plugin.
    (requires Pro).
 2. In the plugin settings: paste the token, press **Test** — you should see
    your business name — then **Sync**.
+
+The token is kept in device-local storage, never in the vault, so it can't
+leak through vault syncing (git, Obsidian Sync, iCloud). Enter it once per
+device.
 
 ## How sync works
 

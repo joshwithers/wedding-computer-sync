@@ -97,7 +97,7 @@ export class SyncEngine {
     }
 
     // ── Push local changes and local-only files ──
-    for (const file of this.app.vault.getMarkdownFiles()) {
+    for (const file of this.collectSyncedFiles()) {
       const sp = this.serverPath(file.path)
       if (!sp || !this.isPushable(sp)) continue
       try {
@@ -175,7 +175,8 @@ export class SyncEngine {
       }
       this.applyingRemote.add(vp)
       try {
-        await this.app.vault.trash(existing, false)
+        // trashFile respects the user's "deleted files" preference
+        await this.app.fileManager.trashFile(existing)
       } finally {
         this.scheduleRemoteClear(vp)
       }
@@ -233,6 +234,26 @@ export class SyncEngine {
     await this.pushOne(sp, content, stats)
     await this.persistBaseline()
     return stats
+  }
+
+  /**
+   * Markdown files inside the synced folder only — the plugin never
+   * needs to enumerate the rest of the vault.
+   */
+  private collectSyncedFiles(): TFile[] {
+    const rootPath = this.baseFolder ? normalizePath(this.baseFolder) : '/'
+    const root = this.app.vault.getAbstractFileByPath(rootPath)
+    if (!(root instanceof TFolder)) return []
+
+    const files: TFile[] = []
+    const walk = (folder: TFolder): void => {
+      for (const child of folder.children) {
+        if (child instanceof TFolder) walk(child)
+        else if (child instanceof TFile && child.extension === 'md') files.push(child)
+      }
+    }
+    walk(root)
+    return files
   }
 
   // ── Vault helpers ──
