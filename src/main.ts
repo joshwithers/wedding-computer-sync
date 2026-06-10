@@ -268,7 +268,7 @@ class WCSettingTab extends PluginSettingTab {
       .addText((text) => {
         text.inputEl.type = 'password'
         text
-          .setPlaceholder('paste your token')
+          .setPlaceholder('Paste your token')
           .setValue(this.plugin.getToken())
           .onChange((value) => {
             this.plugin.setToken(value)
