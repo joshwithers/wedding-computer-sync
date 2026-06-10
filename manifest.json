@@ -1,7 +1,7 @@
 {
   "id": "wedding-computer-sync",
   "name": "Wedding Computer Sync",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "minAppVersion": "1.4.0",
   "description": "Two-way sync of your Wedding Computer contacts, weddings, and checklists into your vault.",
   "author": "Wedding Computer",

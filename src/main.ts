@@ -4,7 +4,6 @@ import { SyncEngine, type Baseline } from './sync'
 
 type WCSettings = {
   serverUrl: string
-  token: string
   baseFolder: string
   autoSync: boolean
   intervalMinutes: number
@@ -12,11 +11,18 @@ type WCSettings = {
 
 const DEFAULT_SETTINGS: WCSettings = {
   serverUrl: 'https://wedding.computer',
-  token: '',
   baseFolder: 'Wedding Computer',
   autoSync: true,
   intervalMinutes: 1,
 }
+
+/**
+ * The sync token lives in Obsidian's per-device local storage, NOT in
+ * data.json. data.json sits inside the vault, and vaults are frequently
+ * synced (git, Obsidian Sync, iCloud) — a CRM credential must never ride
+ * along. The cost: the token is entered once per device.
+ */
+const TOKEN_STORAGE_KEY = 'wedding-computer-sync:token'
 
 type PersistedData = {
   settings: WCSettings
@@ -75,7 +81,7 @@ export default class WeddingComputerSyncPlugin extends Plugin {
         if (this.settings.autoSync) void this.syncNow(false)
       }, Math.max(1, this.settings.intervalMinutes) * 60_000)
     )
-    if (this.settings.autoSync && this.settings.token) {
+    if (this.settings.autoSync && this.getToken()) {
       this.registerInterval(window.setTimeout(() => void this.syncNow(false), 3_000))
     }
   }
@@ -85,12 +91,22 @@ export default class WeddingComputerSyncPlugin extends Plugin {
     this.pushTimers.clear()
   }
 
+  getToken(): string {
+    return ((this.app.loadLocalStorage(TOKEN_STORAGE_KEY) as string | null) ?? '').trim()
+  }
+
+  setToken(token: string): void {
+    this.app.saveLocalStorage(TOKEN_STORAGE_KEY, token.trim() || null)
+    this.resetEngine()
+  }
+
   getEngine(): SyncEngine | null {
-    if (!this.settings.token) return null
+    const token = this.getToken()
+    if (!token) return null
     if (!this.engine) {
       this.engine = new SyncEngine(
         this.app,
-        new WeddingComputerClient(this.settings.serverUrl, this.settings.token),
+        new WeddingComputerClient(this.settings.serverUrl, token),
         this.settings.baseFolder,
         this.baseline,
         () => this.savePersisted()
@@ -188,9 +204,22 @@ export default class WeddingComputerSyncPlugin extends Plugin {
   // ── Persistence ──
 
   async loadPersisted(): Promise<void> {
-    const data = ((await this.loadData()) ?? {}) as Partial<PersistedData>
+    const data = ((await this.loadData()) ?? {}) as Partial<PersistedData> & {
+      settings?: Partial<WCSettings> & { token?: string }
+    }
+
+    // Migrate tokens saved by 0.1.0 out of data.json into device storage,
+    // then scrub them from the vault file.
+    const legacyToken = data.settings?.token
+    if (legacyToken && !this.getToken()) {
+      this.app.saveLocalStorage(TOKEN_STORAGE_KEY, legacyToken)
+    }
+    if (data.settings) delete data.settings.token
+
     this.settings = { ...DEFAULT_SETTINGS, ...(data.settings ?? {}) }
     this.baseline = data.baseline ?? {}
+
+    if (legacyToken !== undefined) await this.savePersisted()
   }
 
   async savePersisted(): Promise<void> {
@@ -232,16 +261,16 @@ class WCSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Sync token')
-      .setDesc('Settings → Device sync → Generate sync token in Wedding Computer.')
+      .setDesc(
+        'Settings → Device sync → Generate sync token in Wedding Computer. Stored on this device only — never in the vault, so it cannot leak through vault syncing.'
+      )
       .addText((text) => {
         text.inputEl.type = 'password'
         text
           .setPlaceholder('paste your token')
-          .setValue(this.plugin.settings.token)
-          .onChange(async (value) => {
-            this.plugin.settings.token = value.trim()
-            this.plugin.resetEngine()
-            await this.plugin.savePersisted()
+          .setValue(this.plugin.getToken())
+          .onChange((value) => {
+            this.plugin.setToken(value)
           })
       })
 
@@ -288,7 +317,7 @@ class WCSettingTab extends PluginSettingTab {
           try {
             const client = new WeddingComputerClient(
               this.plugin.settings.serverUrl,
-              this.plugin.settings.token
+              this.plugin.getToken()
             )
             const { vendor, files } = await client.listFiles()
             new Notice(`Connected to ${vendor} — ${files.length} files available.`)
