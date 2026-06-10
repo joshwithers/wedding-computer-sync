@@ -71,7 +71,7 @@ export class WeddingComputerClient {
         parsed !== null &&
         typeof parsed === 'object' &&
         'error' in parsed &&
-        typeof (parsed as { error: unknown }).error === 'string'
+        typeof (parsed).error === 'string'
       ) {
         return (parsed as { error: string }).error
       }
@@ -133,7 +133,7 @@ export class WeddingComputerClient {
         body !== null &&
         typeof body === 'object' &&
         'etag' in body &&
-        typeof (body as { etag: unknown }).etag === 'string'
+        typeof (body).etag === 'string'
           ? (body as { etag: string }).etag
           : undefined
       return { ok: true, etag: bodyEtag ?? WeddingComputerClient.etagOf(res.headers) ?? '' }

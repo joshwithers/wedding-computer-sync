@@ -326,7 +326,7 @@ class WCSettingTab extends PluginSettingTab {
             new Notice(
               err instanceof ApiError && err.status === 401
                 ? 'Token rejected. Generate one under Settings → Device sync in Wedding Computer.'
-                : `Connection failed: ${err instanceof Error ? err.message : err}`
+                : `Connection failed: ${err instanceof Error ? err.message : String(err)}`
             )
           }
         })

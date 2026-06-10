@@ -18,7 +18,8 @@ to the main app repo:
 ```bash
 npm install
 npm run dev        # watch build → main.js
-npm run typecheck  # strict TypeScript, no any-flows please
+npm run typecheck  # strict TypeScript
+npm run lint       # typescript-eslint type-checked rules — keep it at zero
 npm run build      # production build
 ```
 
